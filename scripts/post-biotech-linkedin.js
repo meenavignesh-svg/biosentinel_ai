@@ -97,7 +97,7 @@ async function createBiotechPost() {
     ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : "GitHub Actions";
 
-  const prompt = `Write one original high-dwell LinkedIn post for recruiters, founders, and biotech industry experts.\n\nContext:\n- GitHub repository: ${repo}\n- Automation run: ${runUrl}\n- Audience: recruiters, biotech founders, AI builders, bioinformatics teams, and technical industry experts.\n- Goal: prove the author can bridge complex biology and practical software engineering.\n\nUse this content pillar today:\n${pillar.name}: ${pillar.brief}\n\nPost blueprint:\n1. Hook: bold, specific technical tension or practical claim.\n2. Context: explain the concrete biotech/software challenge without fluff.\n3. Core value: 3 to 4 skimmable bullets with specific engineering choices, systems thinking, tradeoffs, or implementation details.\n4. Takeaway: one sentence on impact.\n5. Interaction prompt: ask a specific analytical question.\n\nHard rules:\n- 1,100 characters or less.\n- No external URL in the post body.\n- Include this sentence near the end when relevant: Code repository link in the comments below.\n- Keep paragraphs to 1 or 2 lines.\n- Human, credible, practical tone.\n- Avoid generic news summaries.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported.\n- End with 3 to 5 relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
+  const prompt = `Write one original high-dwell LinkedIn post for recruiters, founders, and biotech industry experts.\n\nContext:\n- GitHub repository context: ${repo}\n- Automation run context: ${runUrl}\n- Audience: recruiters, biotech founders, AI builders, bioinformatics teams, and technical industry experts.\n- Goal: prove the author can bridge complex biology and practical software engineering.\n\nUse this content pillar today:\n${pillar.name}: ${pillar.brief}\n\nPost blueprint:\n1. Hook: bold, specific technical tension or practical claim.\n2. Context: explain the concrete biotech/software challenge without fluff.\n3. Core value: 3 to 4 skimmable bullets with specific engineering choices, systems thinking, tradeoffs, or implementation details.\n4. Takeaway: one sentence on impact.\n5. Interaction prompt: ask a specific analytical question.\n\nHard rules:\n- 1,100 characters or less.\n- No external URLs.\n- Do not mention a repository link, GitHub link, comments link, or link in comments.\n- Keep paragraphs to 1 or 2 lines.\n- Human, credible, practical tone.\n- Avoid generic news summaries.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported.\n- End with 3 to 5 relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
 
   const post = await callOpenAI(prompt, 650);
   if (!post) throw new Error("OpenAI returned an empty post.");
@@ -153,25 +153,6 @@ async function createLinkedInComment(postUrn, text, parentCommentUrn = null) {
   }
 }
 
-async function addRepositoryComment(postUrn) {
-  if (process.env.POST_REPOSITORY_COMMENT === "false") return;
-  if (!postUrn || postUrn === "published") {
-    console.warn("LinkedIn did not return a post URN, so the repository comment was skipped.");
-    return;
-  }
-
-  const repoUrl = process.env.REPOSITORY_COMMENT_URL || "https://github.com/meenavignesh-svg/daily_biotech_based_linkedin_post";
-  const commentText = `Code repository: ${repoUrl}`;
-
-  try {
-    await createLinkedInComment(postUrn, commentText);
-    console.log("Added repository link as first comment.");
-  } catch (error) {
-    console.warn(error.message);
-    console.warn("The LinkedIn post is already published. Check that the token has social feed comment permission if you want automatic first comments.");
-  }
-}
-
 async function fetchTopLevelComments(postUrn) {
   const encodedPostUrn = encodeURIComponent(postUrn);
   const response = await fetch(`https://api.linkedin.com/rest/socialActions/${encodedPostUrn}/comments`, {
@@ -194,7 +175,6 @@ function shouldReplyToComment(comment, repliedCommentIds) {
 
   if (!id || repliedCommentIds.has(id)) return false;
   if (comment.actor === author) return false;
-  if (text.startsWith("Code repository:")) return false;
   if (!text.trim()) return false;
 
   return true;
@@ -281,7 +261,6 @@ async function main() {
 
   const id = await publishToLinkedIn(post);
   console.log(`\nPublished to LinkedIn: ${id}`);
-  await addRepositoryComment(id);
   await monitorAndReplyToComments(id, post);
 }
 
