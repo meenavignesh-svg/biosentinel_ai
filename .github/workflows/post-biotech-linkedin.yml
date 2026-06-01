@@ -15,7 +15,7 @@ concurrency:
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 125
 
     steps:
       - name: Check out repository
@@ -40,7 +40,7 @@ jobs:
           NEWS_ITEMS_LIMIT: ${{ vars.NEWS_ITEMS_LIMIT || '8' }}
           DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
           ENABLE_COMMENT_REPLIES: ${{ vars.ENABLE_COMMENT_REPLIES || 'true' }}
-          MONITOR_COMMENTS_MINUTES: ${{ vars.MONITOR_COMMENTS_MINUTES || '60' }}
-          COMMENT_CHECK_INTERVAL_SECONDS: ${{ vars.COMMENT_CHECK_INTERVAL_SECONDS || '600' }}
-          MAX_COMMENT_REPLIES_PER_RUN: ${{ vars.MAX_COMMENT_REPLIES_PER_RUN || '8' }}
+          MONITOR_COMMENTS_MINUTES: ${{ vars.MONITOR_COMMENTS_MINUTES || '115' }}
+          COMMENT_CHECK_INTERVAL_SECONDS: ${{ vars.COMMENT_CHECK_INTERVAL_SECONDS || '300' }}
+          MAX_COMMENT_REPLIES_PER_RUN: ${{ vars.MAX_COMMENT_REPLIES_PER_RUN || '20' }}
         run: node scripts/post-biotech-linkedin.js
