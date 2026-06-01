@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 
-const DEFAULT_SOURCE_REPOSITORIES = "meenavignesh-svg/daily_biotech_based_linkedin_post";
+const DEFAULT_SOURCE_REPOSITORIES = "meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects";
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -87,9 +87,14 @@ async function fetchReadme(repository) {
 }
 
 async function collectRepositoryContext(repository) {
+  const since = new Date(Date.now() - optionalInt("RECENT_COMMIT_HOURS", 30) * 60 * 60 * 1000).toISOString();
   const repo = await fetchJson(`https://api.github.com/repos/${repository}`, `${repository} metadata`);
-  const [commits, issues, readme] = await Promise.all([
-    fetchJson(`https://api.github.com/repos/${repository}/commits?per_page=8`, `${repository} commits`).catch((error) => {
+  const [recentCommits, fallbackCommits, issues, readme] = await Promise.all([
+    fetchJson(`https://api.github.com/repos/${repository}/commits?since=${encodeURIComponent(since)}&per_page=12`, `${repository} recent commits`).catch((error) => {
+      console.warn(error.message);
+      return [];
+    }),
+    fetchJson(`https://api.github.com/repos/${repository}/commits?per_page=8`, `${repository} fallback commits`).catch((error) => {
       console.warn(error.message);
       return [];
     }),
@@ -100,6 +105,8 @@ async function collectRepositoryContext(repository) {
     fetchReadme(repository)
   ]);
 
+  const commits = recentCommits.length ? recentCommits : fallbackCommits;
+
   return {
     name: repository,
     description: repo.description || "No description provided.",
@@ -107,6 +114,7 @@ async function collectRepositoryContext(repository) {
     topics: repo.topics || [],
     url: repo.html_url,
     readme,
+    hadRecentCommits: recentCommits.length > 0,
     commits: commits.map((commit) => ({
       message: commit.commit?.message || "",
       date: commit.commit?.committer?.date || "",
@@ -123,12 +131,13 @@ function renderContext(contexts) {
   return contexts.map((context) => {
     const commits = context.commits.map((commit, index) => `${index + 1}. ${commit.message.split("\n")[0]} (${commit.date})`).join("\n") || "No recent commits.";
     const issues = context.issues.map((issue, index) => `${index + 1}. ${issue.title}`).join("\n") || "No open issues.";
-    return `Repository: ${context.name}\nURL: ${context.url}\nDescription: ${context.description}\nLanguage: ${context.language}\nTopics: ${context.topics.join(", ") || "None"}\n\nREADME excerpt:\n${context.readme}\n\nRecent commits:\n${commits}\n\nOpen issues:\n${issues}`;
+    const recency = context.hadRecentCommits ? "Contains commits from the recent update window." : "No commits found in the recent window; using latest available commits for context.";
+    return `Repository: ${context.name}\nURL: ${context.url}\nDescription: ${context.description}\nLanguage: ${context.language}\nTopics: ${context.topics.join(", ") || "None"}\nRecency: ${recency}\n\nREADME excerpt:\n${context.readme}\n\nDaily/recent update signals:\n${commits}\n\nOpen issues:\n${issues}`;
   }).join("\n\n---\n\n");
 }
 
 function createPrompt(contextText) {
-  return `Create one Biostars-ready forum post draft from the GitHub repository context below.\n\nRepository context:\n${contextText}\n\nGoal:\n- The post should belong on Biostars: practical bioinformatics, computational biology, genomics, workflows, pipelines, data analysis, reproducibility, or tool usage.\n- It must be useful and sincere, not promotional.\n- Do not auto-post. Generate a draft for human review.\n\nWrite in this exact Markdown structure:\n# Title\nA concise Biostars-style title phrased as a specific question or discussion prompt.\n\n## Tags\ncomma,separated,bioinformatics,tags\n\n## Draft Post\nA clear forum post with:\n- What I am trying to do\n- What I have tried or built\n- The specific uncertainty/problem\n- Minimal reproducible details or pseudo-code if relevant\n- A concrete question for the Biostars community\n\n## Why This Fits Biostars\nOne short paragraph explaining why this is a technical bioinformatics discussion rather than an advertisement.\n\nRules:\n- Bioinformatics only.\n- Humanized, honest, and technical.\n- No hype.\n- No medical advice.\n- No fake results or fabricated benchmarks.\n- Do not claim the repository solves a problem unless context supports it.\n- Avoid marketing language like "revolutionary", "game-changing", or "unlocking the future".\n- If the repo context is weak, frame the post as a careful question, not an announcement.\n- Keep the draft under 900 words.`;
+  return `Create one Biostars-ready forum post draft from today's updates across these GitHub repositories.\n\nRepository context:\n${contextText}\n\nThe two recurring source themes are:\n- Rosalind problem-solving and educational bioinformatics algorithms.\n- Daily computational biotechnology projects, including FASTA analysis, protein/primer utilities, lab data analysis, healthcare-data demos, and biotech AI tools.\n\nGoal:\n- Draft a daily Biostars post about what was updated, learned, or built.\n- It should belong on Biostars: practical bioinformatics, computational biology, genomics, workflows, pipelines, data analysis, reproducibility, or tool usage.\n- It must be useful and sincere, not promotional.\n- Do not auto-post. Generate a draft for human review.\n\nPrefer these angles when supported by the context:\n- A specific Rosalind solution lesson and how it maps to real bioinformatics scripting.\n- A daily biotech project update and the practical workflow question it raises.\n- A comparison between learning algorithms through Rosalind and implementing small bioinformatics tools.\n- A reproducibility or documentation question from maintaining both repos.\n\nWrite in this exact Markdown structure:\n# Title\nA concise Biostars-style title phrased as a specific question or discussion prompt.\n\n## Tags\ncomma,separated,bioinformatics,tags\n\n## Draft Post\nA clear forum post with:\n- What I updated today\n- What I am trying to understand or improve\n- The specific technical uncertainty/problem\n- Minimal reproducible details, pseudo-code, or file/workflow structure if relevant\n- A concrete question for the Biostars community\n\n## Why This Fits Biostars\nOne short paragraph explaining why this is a technical bioinformatics discussion rather than an advertisement.\n\nRules:\n- Bioinformatics only.\n- Humanized, honest, and technical.\n- No hype.\n- No medical advice.\n- No fake results or fabricated benchmarks.\n- Do not claim the repositories solve a problem unless context supports it.\n- Avoid marketing language like "revolutionary", "game-changing", or "unlocking the future".\n- If today's update context is weak, frame the post as a careful learning/workflow question, not an announcement.\n- Keep the draft under 900 words.`;
 }
 
 function extractOutputText(response) {
