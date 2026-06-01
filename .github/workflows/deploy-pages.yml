@@ -1,4 +1,4 @@
-name: Deploy consensus engine to GitHub Pages
+name: Deploy BioConsensus Lab to GitHub Pages
 
 on:
   push:
