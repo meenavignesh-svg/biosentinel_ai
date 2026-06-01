@@ -1,10 +1,20 @@
 # Biotech LinkedIn Posting Automation
 
-This repository runs a GitHub Actions workflow every two hours. The workflow gathers fresh biotech news, uses OpenAI to create a humanized biotech LinkedIn post, generates a matching biotech visual, publishes the post with the image through LinkedIn, and stays active during the golden hour to reply to new comments.
+This repository runs a GitHub Actions workflow every two hours. The workflow gathers fresh biotech news, uses OpenAI to create a humanized biotech LinkedIn post, generates a matching biotech visual, publishes the post with the image through LinkedIn, and stays active to reply to new comments until the next scheduled run is close to starting.
 
 ## Content strategy
 
-The automation is biotech-only. It should not post general AI, general tech, finance, lifestyle, or generic news unless the angle is directly tied to biotech.
+The automation is biotech-only and humanized-only. It should not post general AI, general tech, finance, lifestyle, or generic news unless the angle is directly tied to biotech.
+
+The writing must feel like a thoughtful biotech operator wrote it:
+
+- No robotic summaries.
+- No generic press-release tone.
+- No copied headlines.
+- No fake certainty.
+- No unsupported clinical claims.
+- No filler phrases like "in today's rapidly evolving landscape".
+- Specific biotech judgment, practical tradeoffs, and human phrasing only.
 
 Each post is optimized for credible reach toward recruiters, founders, researchers, and industry experts. It cannot guarantee 100k reach, but it is designed to improve the odds with:
 
@@ -15,7 +25,7 @@ Each post is optimized for credible reach toward recruiters, founders, researche
 - 3 to 4 practical bullets about biotech data, AI, bioinformatics, lab automation, drug discovery, genomics, diagnostics, or clinical operations.
 - A specific analytical question that invites comments.
 - A generated biotech image on every post.
-- Golden-hour comment replies.
+- Near-continuous comment monitoring between scheduled runs.
 
 ## Image strategy
 
@@ -40,10 +50,17 @@ The image style is professional and editorial:
 - Generates one matching biotech image.
 - Uploads the image through LinkedIn's Images API.
 - Publishes the post through LinkedIn's Posts API.
-- Keeps the workflow active for up to 60 minutes after posting.
-- Checks for new comments every 10 minutes during that window.
+- Keeps the workflow active for up to 115 minutes after posting.
+- Checks for new comments every 5 minutes during that window.
 - Replies once per comment with a short, substantive biotech response.
+- Starts again on the next 2-hour schedule, creating near-continuous coverage.
 - Can be run manually from the GitHub Actions tab.
+
+## 24/7 behavior
+
+GitHub Actions is not a permanent always-on server. A single workflow run cannot stay alive forever. This setup gets close inside GitHub Actions by running every 2 hours and keeping each run active for up to 115 minutes.
+
+For true 24/7 engagement with no gaps, move the same script to an always-on worker such as a small VPS, Render background worker, Railway service, Fly.io machine, or AWS/GCP/Azure container. The current GitHub version is designed as the best low-maintenance option inside a repository.
 
 ## Required GitHub secrets
 
@@ -70,9 +87,9 @@ Add these in **Settings -> Secrets and variables -> Actions -> Variables** if yo
 | `NEWS_ITEMS_LIMIT` | `8` | Number of news items passed into the post prompt. |
 | `DRY_RUN` | `false` | Set to `true` to generate posts/images without publishing. |
 | `ENABLE_COMMENT_REPLIES` | `true` | Set to `false` to publish without monitoring and replying. |
-| `MONITOR_COMMENTS_MINUTES` | `60` | How long the workflow stays active after posting. |
-| `COMMENT_CHECK_INTERVAL_SECONDS` | `600` | How often the workflow checks for comments. |
-| `MAX_COMMENT_REPLIES_PER_RUN` | `8` | Maximum automatic replies per post run. |
+| `MONITOR_COMMENTS_MINUTES` | `115` | How long the workflow stays active after posting. |
+| `COMMENT_CHECK_INTERVAL_SECONDS` | `300` | How often the workflow checks for comments. |
+| `MAX_COMMENT_REPLIES_PER_RUN` | `20` | Maximum automatic replies per post run. |
 
 ## LinkedIn access requirements
 
