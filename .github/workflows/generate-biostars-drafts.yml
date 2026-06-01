@@ -31,7 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5' }}
-          SOURCE_REPOSITORIES: ${{ vars.SOURCE_REPOSITORIES || 'meenavignesh-svg/daily_biotech_based_linkedin_post' }}
+          SOURCE_REPOSITORIES: ${{ vars.SOURCE_REPOSITORIES || 'meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects' }}
           REQUEST_RETRY_ATTEMPTS: ${{ vars.REQUEST_RETRY_ATTEMPTS || '3' }}
           REQUEST_RETRY_DELAY_MS: ${{ vars.REQUEST_RETRY_DELAY_MS || '2000' }}
           MAX_OUTPUT_TOKENS: ${{ vars.MAX_OUTPUT_TOKENS || '1600' }}
