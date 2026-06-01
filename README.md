@@ -7,7 +7,7 @@ A fully client-side bioinformatics web app deployed with GitHub Pages. It perfor
 After GitHub Pages finishes deploying, the app will be available at:
 
 ```text
-https://meenavignesh-svg.github.io/daily_biotech_based_linkedin_post/
+https://meenavignesh-svg.github.io/biosentinel_ai/
 ```
 
 ## What It Does Locally
