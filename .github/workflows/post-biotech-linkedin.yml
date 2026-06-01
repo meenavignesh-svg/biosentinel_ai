@@ -38,9 +38,20 @@ jobs:
           LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION || '202605' }}
           NEWS_FEEDS: ${{ vars.NEWS_FEEDS || '' }}
           NEWS_ITEMS_LIMIT: ${{ vars.NEWS_ITEMS_LIMIT || '8' }}
+          REQUEST_RETRY_ATTEMPTS: ${{ vars.REQUEST_RETRY_ATTEMPTS || '3' }}
+          REQUEST_RETRY_DELAY_MS: ${{ vars.REQUEST_RETRY_DELAY_MS || '2000' }}
+          REQUIRE_IMAGE_POST: ${{ vars.REQUIRE_IMAGE_POST || 'false' }}
           DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
           ENABLE_COMMENT_REPLIES: ${{ vars.ENABLE_COMMENT_REPLIES || 'true' }}
           MONITOR_COMMENTS_MINUTES: ${{ vars.MONITOR_COMMENTS_MINUTES || '115' }}
           COMMENT_CHECK_INTERVAL_SECONDS: ${{ vars.COMMENT_CHECK_INTERVAL_SECONDS || '300' }}
           MAX_COMMENT_REPLIES_PER_RUN: ${{ vars.MAX_COMMENT_REPLIES_PER_RUN || '20' }}
         run: node scripts/post-biotech-linkedin.js
+
+      - name: Upload failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: biotech-linkedin-failure-report
+          path: run-reports/
+          if-no-files-found: ignore
