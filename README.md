@@ -1,95 +1,67 @@
-# Biostars Draft Generator
+# Multi-AI Consensus Engine
 
-This repository generates Biostars-ready bioinformatics forum post drafts from daily updates in two source repositories:
-
-- `meenavignesh-svg/rosalind-complete-suite`
-- `meenavignesh-svg/daily-biotech-projects`
-
-It does **not** auto-post to Biostars. The workflow creates a Markdown draft and uploads it as a GitHub Actions artifact for manual review.
-
-## Why Draft Only
-
-Biostars is a technical Q&A community, not a social feed. Automated posting can be spammy and may violate community expectations if done without explicit permission. This workflow keeps things safe by generating careful drafts that you review and post yourself.
+A static GitHub Pages app that asks for an OpenAI API key before doing any work, then runs multiple specialist agents and synthesizes a practical consensus answer.
 
 ## What It Does
 
-- Runs once per day at 03:30 UTC.
-- Can also be run manually from the GitHub Actions tab.
-- Reads repository metadata, README content, recent commits, and open issues from both source repositories.
-- Focuses on what was updated daily in the Rosalind solution suite and daily biotech project portfolio.
-- Generates a humanized, technical Biostars-style draft.
-- Adds suggested tags.
-- Adds a Biostars manual publish link with prefilled tags.
-- Uploads the draft as a GitHub Actions artifact.
-- Uploads a failure report if something breaks.
+- Runs entirely in the browser on GitHub Pages.
+- Asks for an API key before any model call.
+- Keeps the API key in browser session storage only.
+- Runs multiple independent agents:
+  - Builder
+  - Skeptic
+  - Evidence Analyst
+  - Risk Reviewer
+  - Operator
+- Synthesizes the agent outputs into one consensus answer.
+- Shows agreement, disagreement, risks, confidence, and next action.
+- Includes a copy button for the final consensus.
 
-## Source Repositories
+## Live Site
 
-The default source repositories are:
+After GitHub Pages finishes deploying, the app will be available at:
 
 ```text
-meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects
+https://meenavignesh-svg.github.io/daily_biotech_based_linkedin_post/
 ```
 
-The draft generator uses these to find daily post angles such as:
+## How To Use
 
-- Rosalind problem-solving lessons.
-- Python bioinformatics scripting patterns.
-- FASTA, protein, primer, lab-data, and healthcare-data workflow updates.
-- Documentation and reproducibility questions.
-- Practical questions worth asking the Biostars community.
+1. Open the live GitHub Pages site.
+2. Click **Connect API**.
+3. Paste your OpenAI API key.
+4. Enter a question or task.
+5. Choose a model and depth.
+6. Select at least two agents.
+7. Click **Run consensus**.
 
-## Required GitHub Secret
+## Privacy Note
 
-Add this in **Settings -> Secrets and variables -> Actions -> New repository secret**.
+This is a static client-side app. There is no backend server in this repository.
 
-| Secret | Purpose |
+Your API key is stored only in `sessionStorage` for the current browser session. It is sent directly from your browser to the OpenAI API when you run the engine.
+
+Do not use this on shared or untrusted computers.
+
+## Deployment
+
+The app deploys through GitHub Actions using GitHub Pages.
+
+The deployment workflow is:
+
+```text
+.github/workflows/deploy-pages.yml
+```
+
+## Files
+
+| File | Purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | OpenAI API key used to generate the Biostars draft. |
+| `index.html` | App structure. |
+| `styles.css` | Responsive interface styling. |
+| `app.js` | API key gate, agent calls, consensus synthesis, and canvas visual. |
+| `.github/workflows/deploy-pages.yml` | GitHub Pages deployment workflow. |
 
-## Optional GitHub Variables
+## Notes
 
-Add these in **Settings -> Secrets and variables -> Actions -> Variables**.
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `SOURCE_REPOSITORIES` | `meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects` | Comma-separated repositories to use as source context. |
-| `OPENAI_MODEL` | `gpt-5` | Model used to generate the draft. |
-| `RECENT_COMMIT_HOURS` | `30` | Time window used to prioritize daily updates. |
-| `REQUEST_RETRY_ATTEMPTS` | `3` | Number of retry attempts for temporary API/network failures. |
-| `REQUEST_RETRY_DELAY_MS` | `2000` | Base retry delay in milliseconds. |
-| `MAX_OUTPUT_TOKENS` | `1600` | Maximum length budget for the generated draft. |
-
-## Draft Format
-
-Each artifact contains a Markdown draft with:
-
-- Title
-- Suggested tags
-- Draft post body
-- Why it fits Biostars
-- Manual publish link
-- Safety note
-
-## Manual Posting
-
-1. Open the latest **Actions** run.
-2. Download the `biostars-draft` artifact.
-3. Read and edit the Markdown draft.
-4. Open the included Biostars publish link.
-5. Paste the reviewed draft into Biostars manually.
-
-## Content Rules
-
-The generator is tuned for:
-
-- Bioinformatics only.
-- Humanized, honest, technical writing.
-- Daily update summaries that become real technical questions.
-- Practical questions or reproducible workflow discussions.
-- No hype.
-- No medical advice.
-- No fake benchmarks.
-- No promotional announcements disguised as questions.
-
-If the daily update context is weak, the workflow should frame the draft as a careful learning/workflow question rather than an announcement.
+Because GitHub Pages is static hosting, it cannot safely store server-side secrets. The app asks for the API key at runtime instead of using a repository secret.
