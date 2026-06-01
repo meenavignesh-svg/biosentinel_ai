@@ -9,9 +9,7 @@ const DEFAULT_NEWS_FEEDS = [
 
 function requireEnv(name) {
   const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 }
 
@@ -24,13 +22,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function linkedInHeaders() {
-  return {
+function linkedInHeaders(contentType = "application/json") {
+  const headers = {
     "Authorization": `Bearer ${requireEnv("LINKEDIN_ACCESS_TOKEN")}`,
-    "Content-Type": "application/json",
     "Linkedin-Version": process.env.LINKEDIN_VERSION || "202605",
     "X-Restli-Protocol-Version": "2.0.0"
   };
+  if (contentType) headers["Content-Type"] = contentType;
+  return headers;
 }
 
 function stripCdata(value) {
@@ -75,12 +74,9 @@ async function fetchBiotechNews() {
 
   for (const feed of feeds) {
     try {
-      const response = await fetch(feed, {
-        headers: { "User-Agent": "biotech-linkedin-automation/1.0" }
-      });
+      const response = await fetch(feed, { headers: { "User-Agent": "biotech-linkedin-automation/1.0" } });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-      const xml = await response.text();
-      items.push(...parseRssItems(xml, feed));
+      items.push(...parseRssItems(await response.text(), feed));
     } catch (error) {
       console.warn(`News feed skipped (${feed}): ${error.message}`);
     }
@@ -113,9 +109,7 @@ function extractOutputText(response) {
   const chunks = [];
   for (const item of response.output || []) {
     for (const content of item.content || []) {
-      if (content.type === "output_text" && content.text) {
-        chunks.push(content.text);
-      }
+      if (content.type === "output_text" && content.text) chunks.push(content.text);
     }
   }
   return chunks.join("\n").trim();
@@ -135,30 +129,78 @@ async function callOpenAI(input, maxOutputTokens = 650) {
     })
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed: ${response.status} ${await response.text()}`);
-  }
+  if (!response.ok) throw new Error(`OpenAI request failed: ${response.status} ${await response.text()}`);
+  return extractOutputText(await response.json());
+}
+
+async function generateBiotechImage(postText, newsContext) {
+  const prompt = `Create a professional LinkedIn image for a biotech news analysis post.\n\nPost:\n${postText}\n\nNews context:\n${newsContext}\n\nVisual direction:\n- Biotech only: genomics, AI drug discovery, lab automation, diagnostics, bioinformatics, molecular data, clinical data systems, or computational biology.\n- Humanized, credible, and expert-facing; not generic stock art.\n- Dark editorial background with high-contrast emerald/cyan scientific accents.\n- Use abstract lab/data visuals, molecular structures, sequencing traces, dashboards, or researcher-workflow cues.\n- No company logos, no fake brands, no patient imagery, no medical claims.\n- Minimal or no text in the image. If text appears, keep it short and readable.\n- 16:9 composition suitable for LinkedIn.`;
+
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${requireEnv("OPENAI_API_KEY")}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
+      prompt,
+      size: process.env.OPENAI_IMAGE_SIZE || "1536x1024",
+      quality: process.env.OPENAI_IMAGE_QUALITY || "medium",
+      output_format: "png"
+    })
+  });
+
+  if (!response.ok) throw new Error(`OpenAI image request failed: ${response.status} ${await response.text()}`);
 
   const data = await response.json();
-  return extractOutputText(data);
+  const b64 = data?.data?.[0]?.b64_json;
+  if (!b64) throw new Error("OpenAI returned no image data.");
+  return Buffer.from(b64, "base64");
+}
+
+async function uploadImageToLinkedIn(imageBuffer) {
+  const author = requireEnv("LINKEDIN_AUTHOR_URN");
+  const initResponse = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
+    method: "POST",
+    headers: linkedInHeaders(),
+    body: JSON.stringify({ initializeUploadRequest: { owner: author } })
+  });
+
+  if (!initResponse.ok) throw new Error(`LinkedIn image upload init failed: ${initResponse.status} ${await initResponse.text()}`);
+
+  const initData = await initResponse.json();
+  const uploadUrl = initData?.value?.uploadUrl;
+  const imageUrn = initData?.value?.image;
+  if (!uploadUrl || !imageUrn) throw new Error("LinkedIn did not return an upload URL and image URN.");
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/png" },
+    body: imageBuffer
+  });
+
+  if (!uploadResponse.ok) throw new Error(`LinkedIn image upload failed: ${uploadResponse.status} ${await uploadResponse.text()}`);
+  return imageUrn;
+}
+
+function createAltText(postText) {
+  const firstLine = postText.split("\n").map((line) => line.trim()).find(Boolean) || "Biotech news analysis";
+  return `Biotech news analysis visual: ${firstLine}`.slice(0, 250);
 }
 
 async function createBiotechPost() {
-  const repo = process.env.GITHUB_REPOSITORY || "meenavignesh-svg/daily_biotech_based_linkedin_post";
   const newsItems = await fetchBiotechNews();
   const newsContext = formatNewsContext(newsItems);
-  const runUrl = process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY && process.env.GITHUB_RUN_ID
-    ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
-    : "GitHub Actions";
 
-  const prompt = `Write one humanized LinkedIn post based on current biotech news for recruiters, founders, and biotech industry experts.\n\nContext:\n- GitHub repository context: ${repo}\n- Automation run context: ${runUrl}\n- Audience: recruiters, biotech founders, AI builders, bioinformatics teams, and technical industry experts.\n- Goal: show the author can turn biotech news into practical software, data, and product insight.\n\nRecent biotech news candidates:\n${newsContext}\n\nChoose one news angle and interpret it like a thoughtful human operator, not a news bot. Explain why it matters, what technical bottleneck or opportunity sits underneath it, and what builders should pay attention to.\n\nPost blueprint:\n1. Hook: one sharp human observation or tension from the news.\n2. Context: summarize the news angle in plain English without copying headlines.\n3. Core value: 3 to 4 skimmable bullets with practical implications for biotech data, AI, bioinformatics, clinical operations, lab automation, drug discovery, genomics, or diagnostics.\n4. Takeaway: one sentence on what this means for builders or teams.\n5. Interaction prompt: ask a specific analytical question.\n\nHard rules:\n- 1,100 characters or less.\n- No external URLs.\n- Do not mention a repository link, GitHub link, comments link, or link in comments.\n- Do not copy article headlines verbatim.\n- Do not sound automated, corporate, generic, or like a press release.\n- Use first-person judgment lightly if it makes the post feel more human.\n- Keep paragraphs to 1 or 2 lines.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported by the news context.\n- End with 3 to 5 relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
+  const prompt = `Write one humanized LinkedIn post based only on current biotech news for recruiters, founders, and biotech industry experts.\n\nAudience:\n- Biotech founders, recruiters, researchers, bioinformatics teams, AI drug discovery builders, diagnostics operators, genomics teams, and technical industry experts.\n\nGoal:\n- Optimize for credible reach toward a large professional audience by making the post useful, specific, visually compatible, and comment-worthy. Do not promise viral reach.\n\nRecent biotech news candidates:\n${newsContext}\n\nChoose one biotech news angle and interpret it like a thoughtful human operator, not a news bot. Explain why it matters, what technical bottleneck or opportunity sits underneath it, and what biotech builders should pay attention to.\n\nPost blueprint:\n1. Hook: one sharp human observation or tension from the biotech news.\n2. Context: summarize the biotech news angle in plain English without copying headlines.\n3. Core value: 3 to 4 skimmable bullets with practical implications for biotech data, AI, bioinformatics, clinical operations, lab automation, drug discovery, genomics, or diagnostics.\n4. Takeaway: one sentence on what this means for biotech builders or teams.\n5. Interaction prompt: ask a specific analytical biotech question that invites expert comments.\n\nHard rules:\n- 1,100 characters or less.\n- Biotech only. No general tech, finance, politics, sports, lifestyle, or generic AI content unless directly tied to biotech.\n- No external URLs.\n- Do not mention a repository link, GitHub link, comments link, or link in comments.\n- Do not copy article headlines verbatim.\n- Do not sound automated, corporate, generic, or like a press release.\n- Use first-person judgment lightly if it makes the post feel more human.\n- Keep paragraphs to 1 or 2 lines.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported by the news context.\n- End with 3 to 5 biotech-relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
 
-  const post = await callOpenAI(prompt, 650);
-  if (!post) throw new Error("OpenAI returned an empty post.");
-  return post;
+  const text = await callOpenAI(prompt, 650);
+  if (!text) throw new Error("OpenAI returned an empty post.");
+  return { text, newsContext };
 }
 
-async function publishToLinkedIn(commentary) {
+async function publishToLinkedIn(commentary, imageUrn, altText) {
   const author = requireEnv("LINKEDIN_AUTHOR_URN");
 
   const response = await fetch("https://api.linkedin.com/rest/posts", {
@@ -173,27 +215,25 @@ async function publishToLinkedIn(commentary) {
         targetEntities: [],
         thirdPartyDistributionChannels: []
       },
+      content: {
+        media: {
+          id: imageUrn,
+          altText
+        }
+      },
       lifecycleState: "PUBLISHED",
       isReshareDisabledByAuthor: false
     })
   });
 
-  if (!response.ok) {
-    throw new Error(`LinkedIn post failed: ${response.status} ${await response.text()}`);
-  }
-
+  if (!response.ok) throw new Error(`LinkedIn post failed: ${response.status} ${await response.text()}`);
   return response.headers.get("x-restli-id") || "published";
 }
 
 async function createLinkedInComment(postUrn, text, parentCommentUrn = null) {
   const author = requireEnv("LINKEDIN_AUTHOR_URN");
   const encodedPostUrn = encodeURIComponent(postUrn);
-  const body = {
-    actor: author,
-    object: postUrn,
-    message: { text }
-  };
-
+  const body = { actor: author, object: postUrn, message: { text } };
   if (parentCommentUrn) body.parentComment = parentCommentUrn;
 
   const response = await fetch(`https://api.linkedin.com/rest/socialActions/${encodedPostUrn}/comments`, {
@@ -202,9 +242,7 @@ async function createLinkedInComment(postUrn, text, parentCommentUrn = null) {
     body: JSON.stringify(body)
   });
 
-  if (!response.ok) {
-    throw new Error(`LinkedIn comment failed: ${response.status} ${await response.text()}`);
-  }
+  if (!response.ok) throw new Error(`LinkedIn comment failed: ${response.status} ${await response.text()}`);
 }
 
 async function fetchTopLevelComments(postUrn) {
@@ -214,10 +252,7 @@ async function fetchTopLevelComments(postUrn) {
     headers: linkedInHeaders()
   });
 
-  if (!response.ok) {
-    throw new Error(`LinkedIn comment read failed: ${response.status} ${await response.text()}`);
-  }
-
+  if (!response.ok) throw new Error(`LinkedIn comment read failed: ${response.status} ${await response.text()}`);
   const data = await response.json();
   return Array.isArray(data.elements) ? data.elements : [];
 }
@@ -226,16 +261,13 @@ function shouldReplyToComment(comment, repliedCommentIds) {
   const author = requireEnv("LINKEDIN_AUTHOR_URN");
   const text = comment?.message?.text || "";
   const id = comment?.id || comment?.commentUrn;
-
   if (!id || repliedCommentIds.has(id)) return false;
   if (comment.actor === author) return false;
-  if (!text.trim()) return false;
-
-  return true;
+  return Boolean(text.trim());
 }
 
 async function createReply(postText, commentText) {
-  const prompt = `Write a thoughtful LinkedIn reply to this comment on a biotech news analysis post.\n\nOriginal post:\n${postText}\n\nComment to reply to:\n${commentText}\n\nReply requirements:\n- 450 characters or less.\n- Sound human, practical, and informed.\n- Add substance: a tradeoff, implementation detail, question, or biotech data/AI angle.\n- Be warm and professional.\n- Do not use hashtags.\n- Do not include links.\n- Do not claim clinical outcomes or invent statistics.\n- Return only the reply text.`;
+  const prompt = `Write a thoughtful LinkedIn reply to this comment on a biotech news analysis post.\n\nOriginal post:\n${postText}\n\nComment to reply to:\n${commentText}\n\nReply requirements:\n- 450 characters or less.\n- Biotech only.\n- Sound human, practical, and informed.\n- Add substance: a tradeoff, implementation detail, question, or biotech data/AI angle.\n- Be warm and professional.\n- Do not use hashtags.\n- Do not include links.\n- Do not claim clinical outcomes or invent statistics.\n- Return only the reply text.`;
 
   const reply = await callOpenAI(prompt, 300);
   if (!reply) throw new Error("OpenAI returned an empty reply.");
@@ -252,7 +284,6 @@ async function monitorAndReplyToComments(postUrn, postText) {
   const monitorMinutes = optionalInt("MONITOR_COMMENTS_MINUTES", 60);
   const intervalSeconds = optionalInt("COMMENT_CHECK_INTERVAL_SECONDS", 600);
   const maxReplies = optionalInt("MAX_COMMENT_REPLIES_PER_RUN", 8);
-
   if (monitorMinutes === 0 || intervalSeconds === 0 || maxReplies === 0) return;
 
   const repliedCommentIds = new Set();
@@ -305,17 +336,23 @@ async function main() {
   for (const name of REQUIRED) requireEnv(name);
 
   const post = await createBiotechPost();
-  console.log("Generated LinkedIn post:\n");
-  console.log(post);
+  console.log("Generated biotech LinkedIn post:\n");
+  console.log(post.text);
+
+  const imageBuffer = await generateBiotechImage(post.text, post.newsContext);
+  console.log(`Generated biotech image (${imageBuffer.length} bytes).`);
 
   if (process.env.DRY_RUN === "true") {
-    console.log("\nDRY_RUN=true, so the post was not published.");
+    console.log("\nDRY_RUN=true, so the post and image were not published.");
     return;
   }
 
-  const id = await publishToLinkedIn(post);
-  console.log(`\nPublished to LinkedIn: ${id}`);
-  await monitorAndReplyToComments(id, post);
+  const imageUrn = await uploadImageToLinkedIn(imageBuffer);
+  console.log(`Uploaded LinkedIn image: ${imageUrn}`);
+
+  const id = await publishToLinkedIn(post.text, imageUrn, createAltText(post.text));
+  console.log(`\nPublished image-backed LinkedIn post: ${id}`);
+  await monitorAndReplyToComments(id, post.text);
 }
 
 main().catch((error) => {
