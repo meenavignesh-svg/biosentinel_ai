@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Consensus Engine</title>
+    <title>BioConsensus Lab</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -11,22 +11,72 @@
 
     <header class="topbar">
       <div>
-        <p class="eyebrow">Multi-agent reasoning workspace</p>
-        <h1>Consensus Engine</h1>
+        <p class="eyebrow">Bioinformatics analysis workbench</p>
+        <h1>BioConsensus Lab</h1>
       </div>
-      <div class="key-state" id="keyState">API key required</div>
+      <div class="top-actions">
+        <div class="key-state" id="keyState">AI optional</div>
+        <button class="ghost-button" id="apiButton" type="button">Connect API</button>
+      </div>
     </header>
 
     <main class="layout">
-      <section class="control-panel" aria-label="Consensus controls">
+      <section class="control-panel" aria-label="Sequence controls">
         <div class="panel-head">
-          <h2>Ask The Panel</h2>
-          <button class="ghost-button" id="apiButton" type="button">Connect API</button>
+          <h2>Sequence Input</h2>
+          <button class="ghost-button" id="exampleButton" type="button">Example</button>
         </div>
 
-        <label class="field-label" for="questionInput">Question or task</label>
-        <textarea id="questionInput" rows="8" placeholder="Example: Evaluate whether a multi-agent genomic variant triage workflow should use majority voting, weighted confidence, or a reviewer-in-the-loop consensus step."></textarea>
+        <label class="field-label" for="sequenceInput">Paste DNA, RNA, protein, or FASTA</label>
+        <textarea id="sequenceInput" rows="10" spellcheck="false" placeholder=">sample_dna&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"></textarea>
 
+        <div class="settings-grid">
+          <label>
+            Sequence type
+            <select id="sequenceType">
+              <option value="auto">Auto detect</option>
+              <option value="dna">DNA</option>
+              <option value="rna">RNA</option>
+              <option value="protein">Protein</option>
+            </select>
+          </label>
+          <label>
+            Genetic code
+            <select id="geneticCode">
+              <option value="standard">Standard</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="actions-row">
+          <button class="primary-button" id="analyzeButton" type="button">Analyze sequence</button>
+          <button class="ghost-button" id="clearButton" type="button">Clear</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="panel-head compact-head">
+          <h2>Primer QC</h2>
+        </div>
+        <div class="settings-grid">
+          <label>
+            Forward primer
+            <input id="forwardPrimer" type="text" spellcheck="false" placeholder="ATGGCCATTGTA" />
+          </label>
+          <label>
+            Reverse primer
+            <input id="reversePrimer" type="text" spellcheck="false" placeholder="CTATCGGGCACC" />
+          </label>
+        </div>
+        <button class="ghost-button full-button" id="primerButton" type="button">Check primers</button>
+
+        <div class="divider"></div>
+
+        <div class="panel-head compact-head">
+          <h2>AI Consensus Review</h2>
+        </div>
+        <label class="field-label" for="researchQuestion">Question for the agents</label>
+        <textarea id="researchQuestion" rows="4" placeholder="Example: Does this ORF look suitable for a beginner cloning exercise? What should I verify before using it?"></textarea>
         <div class="settings-grid">
           <label>
             Model
@@ -46,46 +96,53 @@
             </select>
           </label>
         </div>
-
-        <div class="agent-list" aria-label="Active agents">
-          <label><input type="checkbox" data-agent="builder" checked /> Builder</label>
-          <label><input type="checkbox" data-agent="skeptic" checked /> Skeptic</label>
-          <label><input type="checkbox" data-agent="evidence" checked /> Evidence</label>
-          <label><input type="checkbox" data-agent="risk" checked /> Risk</label>
-          <label><input type="checkbox" data-agent="operator" checked /> Operator</label>
+        <div class="agent-list" aria-label="Active bioinformatics agents">
+          <label><input type="checkbox" data-agent="sequence" checked /> Sequence</label>
+          <label><input type="checkbox" data-agent="annotation" checked /> Annotation</label>
+          <label><input type="checkbox" data-agent="wetlab" checked /> Wet Lab</label>
+          <label><input type="checkbox" data-agent="quality" checked /> Quality</label>
+          <label><input type="checkbox" data-agent="safety" checked /> Safety</label>
         </div>
-
-        <div class="actions-row">
-          <button class="primary-button" id="runButton" type="button" disabled>Run consensus</button>
-          <button class="ghost-button" id="clearButton" type="button">Clear</button>
-        </div>
-
-        <p class="privacy-note">The API key is kept in this browser session only. It is not stored in the repository or sent anywhere except the OpenAI API request.</p>
+        <button class="primary-button full-button" id="runButton" type="button" disabled>Run AI consensus</button>
+        <p class="privacy-note">Core sequence analysis runs locally. The API key is needed only for optional AI interpretation.</p>
       </section>
 
-      <section class="results-panel" aria-label="Consensus results">
+      <section class="results-panel" aria-label="Bioinformatics results">
         <div class="panel-head">
-          <h2>Consensus</h2>
-          <button class="ghost-button" id="copyButton" type="button">Copy</button>
+          <h2>Analysis Results</h2>
+          <button class="ghost-button" id="copyButton" type="button">Copy report</button>
         </div>
 
         <div class="status-track" id="statusTrack">
           <span class="status-dot"></span>
-          <span id="statusText">Connect an API key to begin.</span>
+          <span id="statusText">Paste a sequence to begin.</span>
         </div>
 
-        <article class="consensus-output" id="consensusOutput">
-          <p>The engine will ask multiple specialist agents for independent views, then synthesize agreement, disagreement, risks, and a practical next step.</p>
+        <div class="metric-grid" id="metricGrid"></div>
+
+        <article class="consensus-output" id="analysisOutput">
+          <p>Run an analysis to see cleaned sequence statistics, composition, reverse complement, transcription/translation, ORFs, and primer QC.</p>
         </article>
 
-        <div class="agent-output-grid" id="agentOutputs" aria-live="polite"></div>
+        <div class="tabs" role="tablist" aria-label="Result tabs">
+          <button class="tab-button active" data-tab="orfs" type="button">ORFs</button>
+          <button class="tab-button" data-tab="composition" type="button">Composition</button>
+          <button class="tab-button" data-tab="ai" type="button">AI Consensus</button>
+        </div>
+
+        <div class="tab-panel" id="orfsPanel"></div>
+        <div class="tab-panel hidden" id="compositionPanel"></div>
+        <div class="tab-panel hidden" id="aiPanel">
+          <p class="muted-copy">Connect an API key and run the AI consensus review after local analysis.</p>
+          <div class="agent-output-grid" id="agentOutputs" aria-live="polite"></div>
+        </div>
       </section>
     </main>
 
     <dialog class="api-dialog" id="apiDialog">
       <form method="dialog" class="dialog-body">
         <h2>Connect OpenAI API</h2>
-        <p>Enter your API key before the engine runs. It stays in session storage for this tab.</p>
+        <p>Enter your API key for optional AI consensus review. Local sequence analysis does not need it.</p>
         <label class="field-label" for="apiKeyInput">API key</label>
         <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
         <div class="dialog-actions">
