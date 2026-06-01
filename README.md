@@ -1,6 +1,11 @@
 # Biostars Draft Generator
 
-This repository generates Biostars-ready bioinformatics forum post drafts from one or more GitHub repositories. It does **not** auto-post to Biostars. The workflow creates a Markdown draft and uploads it as a GitHub Actions artifact for manual review.
+This repository generates Biostars-ready bioinformatics forum post drafts from daily updates in two source repositories:
+
+- `meenavignesh-svg/rosalind-complete-suite`
+- `meenavignesh-svg/daily-biotech-projects`
+
+It does **not** auto-post to Biostars. The workflow creates a Markdown draft and uploads it as a GitHub Actions artifact for manual review.
 
 ## Why Draft Only
 
@@ -10,13 +15,29 @@ Biostars is a technical Q&A community, not a social feed. Automated posting can 
 
 - Runs once per day at 03:30 UTC.
 - Can also be run manually from the GitHub Actions tab.
-- Reads repository metadata, README content, recent commits, and open issues.
-- Supports one or more source repositories.
+- Reads repository metadata, README content, recent commits, and open issues from both source repositories.
+- Focuses on what was updated daily in the Rosalind solution suite and daily biotech project portfolio.
 - Generates a humanized, technical Biostars-style draft.
 - Adds suggested tags.
 - Adds a Biostars manual publish link with prefilled tags.
 - Uploads the draft as a GitHub Actions artifact.
 - Uploads a failure report if something breaks.
+
+## Source Repositories
+
+The default source repositories are:
+
+```text
+meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects
+```
+
+The draft generator uses these to find daily post angles such as:
+
+- Rosalind problem-solving lessons.
+- Python bioinformatics scripting patterns.
+- FASTA, protein, primer, lab-data, and healthcare-data workflow updates.
+- Documentation and reproducibility questions.
+- Practical questions worth asking the Biostars community.
 
 ## Required GitHub Secret
 
@@ -32,21 +53,12 @@ Add these in **Settings -> Secrets and variables -> Actions -> Variables**.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SOURCE_REPOSITORIES` | `meenavignesh-svg/daily_biotech_based_linkedin_post` | Comma-separated repositories to use as source context. Example: `owner/repo-one,owner/repo-two`. |
+| `SOURCE_REPOSITORIES` | `meenavignesh-svg/rosalind-complete-suite,meenavignesh-svg/daily-biotech-projects` | Comma-separated repositories to use as source context. |
 | `OPENAI_MODEL` | `gpt-5` | Model used to generate the draft. |
+| `RECENT_COMMIT_HOURS` | `30` | Time window used to prioritize daily updates. |
 | `REQUEST_RETRY_ATTEMPTS` | `3` | Number of retry attempts for temporary API/network failures. |
 | `REQUEST_RETRY_DELAY_MS` | `2000` | Base retry delay in milliseconds. |
 | `MAX_OUTPUT_TOKENS` | `1600` | Maximum length budget for the generated draft. |
-
-## Connecting Two Repositories
-
-Set the `SOURCE_REPOSITORIES` variable to both repositories, separated by a comma:
-
-```text
-owner/first-repo,owner/second-repo
-```
-
-The workflow will use both repositories as context when drafting the Biostars post.
 
 ## Draft Format
 
@@ -73,10 +85,11 @@ The generator is tuned for:
 
 - Bioinformatics only.
 - Humanized, honest, technical writing.
+- Daily update summaries that become real technical questions.
 - Practical questions or reproducible workflow discussions.
 - No hype.
 - No medical advice.
 - No fake benchmarks.
 - No promotional announcements disguised as questions.
 
-If the repository context is weak, the workflow should frame the draft as a careful question rather than an announcement.
+If the daily update context is weak, the workflow should frame the draft as a careful learning/workflow question rather than an announcement.
