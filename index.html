@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consensus Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="signalCanvas" aria-hidden="true"></canvas>
+
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Multi-agent reasoning workspace</p>
+        <h1>Consensus Engine</h1>
+      </div>
+      <div class="key-state" id="keyState">API key required</div>
+    </header>
+
+    <main class="layout">
+      <section class="control-panel" aria-label="Consensus controls">
+        <div class="panel-head">
+          <h2>Ask The Panel</h2>
+          <button class="ghost-button" id="apiButton" type="button">Connect API</button>
+        </div>
+
+        <label class="field-label" for="questionInput">Question or task</label>
+        <textarea id="questionInput" rows="8" placeholder="Example: Evaluate whether a multi-agent genomic variant triage workflow should use majority voting, weighted confidence, or a reviewer-in-the-loop consensus step."></textarea>
+
+        <div class="settings-grid">
+          <label>
+            Model
+            <select id="modelInput">
+              <option value="gpt-5">gpt-5</option>
+              <option value="gpt-5-mini">gpt-5-mini</option>
+              <option value="gpt-4.1">gpt-4.1</option>
+              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            </select>
+          </label>
+          <label>
+            Depth
+            <select id="depthInput">
+              <option value="standard">Standard</option>
+              <option value="deep">Deep</option>
+              <option value="fast">Fast</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="agent-list" aria-label="Active agents">
+          <label><input type="checkbox" data-agent="builder" checked /> Builder</label>
+          <label><input type="checkbox" data-agent="skeptic" checked /> Skeptic</label>
+          <label><input type="checkbox" data-agent="evidence" checked /> Evidence</label>
+          <label><input type="checkbox" data-agent="risk" checked /> Risk</label>
+          <label><input type="checkbox" data-agent="operator" checked /> Operator</label>
+        </div>
+
+        <div class="actions-row">
+          <button class="primary-button" id="runButton" type="button" disabled>Run consensus</button>
+          <button class="ghost-button" id="clearButton" type="button">Clear</button>
+        </div>
+
+        <p class="privacy-note">The API key is kept in this browser session only. It is not stored in the repository or sent anywhere except the OpenAI API request.</p>
+      </section>
+
+      <section class="results-panel" aria-label="Consensus results">
+        <div class="panel-head">
+          <h2>Consensus</h2>
+          <button class="ghost-button" id="copyButton" type="button">Copy</button>
+        </div>
+
+        <div class="status-track" id="statusTrack">
+          <span class="status-dot"></span>
+          <span id="statusText">Connect an API key to begin.</span>
+        </div>
+
+        <article class="consensus-output" id="consensusOutput">
+          <p>The engine will ask multiple specialist agents for independent views, then synthesize agreement, disagreement, risks, and a practical next step.</p>
+        </article>
+
+        <div class="agent-output-grid" id="agentOutputs" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <dialog class="api-dialog" id="apiDialog">
+      <form method="dialog" class="dialog-body">
+        <h2>Connect OpenAI API</h2>
+        <p>Enter your API key before the engine runs. It stays in session storage for this tab.</p>
+        <label class="field-label" for="apiKeyInput">API key</label>
+        <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit">Cancel</button>
+          <button class="primary-button" id="saveKeyButton" value="default" type="submit">Save key</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
