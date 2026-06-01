@@ -1,21 +1,6 @@
-# Multi-AI Consensus Engine
+# BioConsensus Lab
 
-A static GitHub Pages app that asks for an OpenAI API key before doing any work, then runs multiple specialist agents and synthesizes a practical consensus answer.
-
-## What It Does
-
-- Runs entirely in the browser on GitHub Pages.
-- Asks for an API key before any model call.
-- Keeps the API key in browser session storage only.
-- Runs multiple independent agents:
-  - Builder
-  - Skeptic
-  - Evidence Analyst
-  - Risk Reviewer
-  - Operator
-- Synthesizes the agent outputs into one consensus answer.
-- Shows agreement, disagreement, risks, confidence, and next action.
-- Includes a copy button for the final consensus.
+A fully client-side bioinformatics web app deployed with GitHub Pages. It performs practical sequence analysis in the browser and can optionally ask multiple AI reviewers to generate a consensus interpretation.
 
 ## Live Site
 
@@ -25,21 +10,40 @@ After GitHub Pages finishes deploying, the app will be available at:
 https://meenavignesh-svg.github.io/daily_biotech_based_linkedin_post/
 ```
 
-## How To Use
+## What It Does Locally
 
-1. Open the live GitHub Pages site.
-2. Click **Connect API**.
-3. Paste your OpenAI API key.
-4. Enter a question or task.
-5. Choose a model and depth.
-6. Select at least two agents.
-7. Click **Run consensus**.
+The main analysis tools run directly in the browser and do not require an API key.
 
-## Privacy Note
+- Accepts FASTA or plain DNA, RNA, and protein sequences.
+- Auto-detects sequence type, with manual override controls.
+- Calculates length, nucleotide or amino-acid composition, and GC content.
+- Generates reverse complement sequences for DNA and RNA.
+- Transcribes DNA to RNA.
+- Translates coding sequences with the standard codon table.
+- Scans open reading frames across forward and reverse frames.
+- Estimates protein molecular weight.
+- Checks primers for length, GC percentage, rough melting temperature, and simple homopolymer risk.
+- Creates a copyable analysis report.
 
-This is a static client-side app. There is no backend server in this repository.
+## Optional AI Consensus Review
 
-Your API key is stored only in `sessionStorage` for the current browser session. It is sent directly from your browser to the OpenAI API when you run the engine.
+The app asks for an OpenAI API key before running any AI review. The key stays in browser session storage for the current browser session and is not saved in this repository.
+
+Bioinformatics-focused reviewers include:
+
+- Sequence Analyst
+- Annotation Reviewer
+- Wet Lab Planner
+- Data QC
+- Safety Reviewer
+
+The AI review is designed to explain the local analysis, flag quality concerns, and suggest practical next steps. Local analysis still works without AI.
+
+## Privacy
+
+This is a static GitHub Pages app. There is no backend server in this repository.
+
+Your API key is stored only in `sessionStorage` for the current browser session. When you run the AI review, requests are sent directly from your browser to the OpenAI API.
 
 Do not use this on shared or untrusted computers.
 
@@ -57,9 +61,9 @@ The deployment workflow is:
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | App structure. |
-| `styles.css` | Responsive interface styling. |
-| `app.js` | API key gate, agent calls, consensus synthesis, and canvas visual. |
+| `index.html` | Bioinformatics workbench interface. |
+| `styles.css` | Responsive app styling and visual system. |
+| `app.js` | Sequence analysis, primer checks, optional AI consensus, and visual motion. |
 | `.github/workflows/deploy-pages.yml` | GitHub Pages deployment workflow. |
 
 ## Notes
