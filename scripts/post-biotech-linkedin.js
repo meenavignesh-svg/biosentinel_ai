@@ -1,22 +1,10 @@
 const REQUIRED = ["OPENAI_API_KEY", "LINKEDIN_ACCESS_TOKEN", "LINKEDIN_AUTHOR_URN"];
 
-const CONTENT_PILLARS = [
-  {
-    name: "Proof of Work Breakdown",
-    brief: "Document a concrete engineering problem, the bioinformatics or biotech context, the implementation choices, and the practical result. Use short code-like snippets or architecture fragments when useful."
-  },
-  {
-    name: "Deep-Dive Carousel Concept",
-    brief: "Write a text post that tees up a PDF carousel idea: a compact step-by-step guide or visual breakdown for AI-assisted biotech, genomics, browser-based development, or multi-agent analysis."
-  },
-  {
-    name: "Industrial Symbiosis and Circular Infrastructure",
-    brief: "Analyze how compute infrastructure, data centers, lab operations, microbial systems, environmental biotech, or circular infrastructure could reinforce each other."
-  },
-  {
-    name: "Technical Critique and Case Study",
-    brief: "Break down a specialized high-performance workflow such as healthcare AI, real-time biological signals, Formula 1-style human performance telemetry, or regional AI infrastructure, then connect it to biotech data engineering."
-  }
+const DEFAULT_NEWS_FEEDS = [
+  "https://news.google.com/rss/search?q=biotech+OR+biotechnology+OR+bioinformatics+OR+genomics+OR+drug+discovery+when:1d&hl=en-US&gl=US&ceid=US:en",
+  "https://news.google.com/rss/search?q=AI+biotech+OR+AI+drug+discovery+OR+computational+biology+when:1d&hl=en-US&gl=US&ceid=US:en",
+  "https://www.fiercebiotech.com/rss/xml",
+  "https://www.genengnews.com/feed/"
 ];
 
 function requireEnv(name) {
@@ -45,6 +33,80 @@ function linkedInHeaders() {
   };
 }
 
+function stripCdata(value) {
+  return value.replace(/^<!\[CDATA\[/, "").replace(/\]\]>$/, "").trim();
+}
+
+function decodeEntities(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
+function tagValue(item, tagName) {
+  const match = item.match(new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "i"));
+  return match ? decodeEntities(stripCdata(match[1]).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")) : "";
+}
+
+function parseRssItems(xml, feedUrl) {
+  return [...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map((match) => ({
+    title: tagValue(match[0], "title"),
+    source: tagValue(match[0], "source") || new URL(feedUrl).hostname,
+    pubDate: tagValue(match[0], "pubDate"),
+    description: tagValue(match[0], "description")
+  })).filter((item) => item.title);
+}
+
+function getNewsFeedUrls() {
+  const configured = process.env.NEWS_FEEDS || "";
+  return configured
+    ? configured.split(",").map((url) => url.trim()).filter(Boolean)
+    : DEFAULT_NEWS_FEEDS;
+}
+
+async function fetchBiotechNews() {
+  const maxItems = optionalInt("NEWS_ITEMS_LIMIT", 8);
+  const feeds = getNewsFeedUrls();
+  const items = [];
+
+  for (const feed of feeds) {
+    try {
+      const response = await fetch(feed, {
+        headers: { "User-Agent": "biotech-linkedin-automation/1.0" }
+      });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      const xml = await response.text();
+      items.push(...parseRssItems(xml, feed));
+    } catch (error) {
+      console.warn(`News feed skipped (${feed}): ${error.message}`);
+    }
+  }
+
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = item.title.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, maxItems);
+}
+
+function formatNewsContext(newsItems) {
+  if (!newsItems.length) {
+    return "No fresh RSS items were available. Write a timeless biotech analysis post instead, and do not pretend there is breaking news.";
+  }
+
+  return newsItems.map((item, index) => {
+    const date = item.pubDate ? ` | ${item.pubDate}` : "";
+    const description = item.description ? ` | ${item.description.slice(0, 220)}` : "";
+    return `${index + 1}. ${item.title} (${item.source}${date})${description}`;
+  }).join("\n");
+}
+
 function extractOutputText(response) {
   if (response.output_text) return response.output_text.trim();
 
@@ -57,15 +119,6 @@ function extractOutputText(response) {
     }
   }
   return chunks.join("\n").trim();
-}
-
-function selectPillar() {
-  const runNumber = Number.parseInt(process.env.GITHUB_RUN_NUMBER || "0", 10);
-  const hour = new Date().getUTCHours();
-  const index = Number.isFinite(runNumber) && runNumber > 0
-    ? runNumber % CONTENT_PILLARS.length
-    : Math.floor(hour / 2) % CONTENT_PILLARS.length;
-  return CONTENT_PILLARS[index];
 }
 
 async function callOpenAI(input, maxOutputTokens = 650) {
@@ -92,12 +145,13 @@ async function callOpenAI(input, maxOutputTokens = 650) {
 
 async function createBiotechPost() {
   const repo = process.env.GITHUB_REPOSITORY || "meenavignesh-svg/daily_biotech_based_linkedin_post";
-  const pillar = selectPillar();
+  const newsItems = await fetchBiotechNews();
+  const newsContext = formatNewsContext(newsItems);
   const runUrl = process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY && process.env.GITHUB_RUN_ID
     ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : "GitHub Actions";
 
-  const prompt = `Write one original high-dwell LinkedIn post for recruiters, founders, and biotech industry experts.\n\nContext:\n- GitHub repository context: ${repo}\n- Automation run context: ${runUrl}\n- Audience: recruiters, biotech founders, AI builders, bioinformatics teams, and technical industry experts.\n- Goal: prove the author can bridge complex biology and practical software engineering.\n\nUse this content pillar today:\n${pillar.name}: ${pillar.brief}\n\nPost blueprint:\n1. Hook: bold, specific technical tension or practical claim.\n2. Context: explain the concrete biotech/software challenge without fluff.\n3. Core value: 3 to 4 skimmable bullets with specific engineering choices, systems thinking, tradeoffs, or implementation details.\n4. Takeaway: one sentence on impact.\n5. Interaction prompt: ask a specific analytical question.\n\nHard rules:\n- 1,100 characters or less.\n- No external URLs.\n- Do not mention a repository link, GitHub link, comments link, or link in comments.\n- Keep paragraphs to 1 or 2 lines.\n- Human, credible, practical tone.\n- Avoid generic news summaries.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported.\n- End with 3 to 5 relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
+  const prompt = `Write one humanized LinkedIn post based on current biotech news for recruiters, founders, and biotech industry experts.\n\nContext:\n- GitHub repository context: ${repo}\n- Automation run context: ${runUrl}\n- Audience: recruiters, biotech founders, AI builders, bioinformatics teams, and technical industry experts.\n- Goal: show the author can turn biotech news into practical software, data, and product insight.\n\nRecent biotech news candidates:\n${newsContext}\n\nChoose one news angle and interpret it like a thoughtful human operator, not a news bot. Explain why it matters, what technical bottleneck or opportunity sits underneath it, and what builders should pay attention to.\n\nPost blueprint:\n1. Hook: one sharp human observation or tension from the news.\n2. Context: summarize the news angle in plain English without copying headlines.\n3. Core value: 3 to 4 skimmable bullets with practical implications for biotech data, AI, bioinformatics, clinical operations, lab automation, drug discovery, genomics, or diagnostics.\n4. Takeaway: one sentence on what this means for builders or teams.\n5. Interaction prompt: ask a specific analytical question.\n\nHard rules:\n- 1,100 characters or less.\n- No external URLs.\n- Do not mention a repository link, GitHub link, comments link, or link in comments.\n- Do not copy article headlines verbatim.\n- Do not sound automated, corporate, generic, or like a press release.\n- Use first-person judgment lightly if it makes the post feel more human.\n- Keep paragraphs to 1 or 2 lines.\n- Avoid medical advice, unsupported clinical claims, hype, and fake statistics.\n- If using a metric, make it a clearly framed estimate or engineering target unless it is directly supported by the news context.\n- End with 3 to 5 relevant hashtags.\n- Do not mention that an AI wrote it.\n- Return only the LinkedIn post text.`;
 
   const post = await callOpenAI(prompt, 650);
   if (!post) throw new Error("OpenAI returned an empty post.");
@@ -181,7 +235,7 @@ function shouldReplyToComment(comment, repliedCommentIds) {
 }
 
 async function createReply(postText, commentText) {
-  const prompt = `Write a thoughtful LinkedIn reply to this comment on a biotech/software post.\n\nOriginal post:\n${postText}\n\nComment to reply to:\n${commentText}\n\nReply requirements:\n- 450 characters or less.\n- Sound like a practical bioinformatics and AI builder.\n- Add substance: a tradeoff, implementation detail, or useful question.\n- Be warm and professional.\n- Do not use hashtags.\n- Do not include links.\n- Do not claim clinical outcomes or invent statistics.\n- Return only the reply text.`;
+  const prompt = `Write a thoughtful LinkedIn reply to this comment on a biotech news analysis post.\n\nOriginal post:\n${postText}\n\nComment to reply to:\n${commentText}\n\nReply requirements:\n- 450 characters or less.\n- Sound human, practical, and informed.\n- Add substance: a tradeoff, implementation detail, question, or biotech data/AI angle.\n- Be warm and professional.\n- Do not use hashtags.\n- Do not include links.\n- Do not claim clinical outcomes or invent statistics.\n- Return only the reply text.`;
 
   const reply = await callOpenAI(prompt, 300);
   if (!reply) throw new Error("OpenAI returned an empty reply.");
