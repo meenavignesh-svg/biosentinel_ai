@@ -8,10 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: biotech-linkedin-posting
+  cancel-in-progress: false
+
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
@@ -22,7 +26,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Generate and publish LinkedIn post
+      - name: Generate, publish, and monitor LinkedIn post
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5' }}
@@ -30,4 +34,10 @@ jobs:
           LINKEDIN_AUTHOR_URN: ${{ secrets.LINKEDIN_AUTHOR_URN }}
           LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION || '202605' }}
           DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
+          ENABLE_COMMENT_REPLIES: ${{ vars.ENABLE_COMMENT_REPLIES || 'true' }}
+          MONITOR_COMMENTS_MINUTES: ${{ vars.MONITOR_COMMENTS_MINUTES || '60' }}
+          COMMENT_CHECK_INTERVAL_SECONDS: ${{ vars.COMMENT_CHECK_INTERVAL_SECONDS || '600' }}
+          MAX_COMMENT_REPLIES_PER_RUN: ${{ vars.MAX_COMMENT_REPLIES_PER_RUN || '8' }}
+          POST_REPOSITORY_COMMENT: ${{ vars.POST_REPOSITORY_COMMENT || 'true' }}
+          REPOSITORY_COMMENT_URL: ${{ vars.REPOSITORY_COMMENT_URL || 'https://github.com/meenavignesh-svg/daily_biotech_based_linkedin_post' }}
         run: node scripts/post-biotech-linkedin.js
