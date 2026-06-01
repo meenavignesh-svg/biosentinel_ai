@@ -1,6 +1,6 @@
 # Biotech LinkedIn Posting Automation
 
-This repository runs a GitHub Actions workflow every two hours. The workflow uses OpenAI to generate a high-dwell biotech LinkedIn post, publishes it through LinkedIn's Posts API, and then tries to add the GitHub repository link as the first comment.
+This repository runs a GitHub Actions workflow every two hours. The workflow uses OpenAI to generate a high-dwell biotech LinkedIn post, publishes it through LinkedIn's Posts API, tries to add the GitHub repository link as the first comment, and stays active during the golden hour to reply to new comments.
 
 ## Content strategy
 
@@ -38,6 +38,9 @@ Each post follows this structure:
 - Generates one professional biotech LinkedIn post.
 - Publishes text-only posts to LinkedIn when the required secrets are configured.
 - Attempts to add the GitHub repository link as the first LinkedIn comment.
+- Keeps the workflow active for up to 60 minutes after posting.
+- Checks for new comments every 10 minutes during that window.
+- Replies once per comment with a short, substantive biotech/software response.
 - Can be run manually from the GitHub Actions tab.
 
 ## Required GitHub secrets
@@ -46,8 +49,8 @@ Add these in GitHub under **Settings -> Secrets and variables -> Actions -> New 
 
 | Secret | Purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | OpenAI API key used to generate the post. |
-| `LINKEDIN_ACCESS_TOKEN` | LinkedIn OAuth access token with posting permission. |
+| `OPENAI_API_KEY` | OpenAI API key used to generate posts and replies. |
+| `LINKEDIN_ACCESS_TOKEN` | LinkedIn OAuth access token with posting, comment, and comment-read permission. |
 | `LINKEDIN_AUTHOR_URN` | LinkedIn author URN, such as `urn:li:person:YOUR_ID` or `urn:li:organization:YOUR_ORG_ID`. |
 
 ## Optional GitHub variables
@@ -56,11 +59,15 @@ Add these in **Settings -> Secrets and variables -> Actions -> Variables** if yo
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OPENAI_MODEL` | `gpt-5` | Model used to generate posts. |
+| `OPENAI_MODEL` | `gpt-5` | Model used to generate posts and replies. |
 | `LINKEDIN_VERSION` | `202605` | LinkedIn API version header. |
 | `DRY_RUN` | `false` | Set to `true` to generate posts without publishing. |
-| `POST_REPOSITORY_COMMENT` | enabled | Set to `false` to skip the first-comment repository link. |
+| `POST_REPOSITORY_COMMENT` | `true` | Set to `false` to skip the first-comment repository link. |
 | `REPOSITORY_COMMENT_URL` | this repository URL | Overrides the GitHub link used in the first comment. |
+| `ENABLE_COMMENT_REPLIES` | `true` | Set to `false` to publish without monitoring and replying. |
+| `MONITOR_COMMENTS_MINUTES` | `60` | How long the workflow stays active after posting. |
+| `COMMENT_CHECK_INTERVAL_SECONDS` | `600` | How often the workflow checks for comments. |
+| `MAX_COMMENT_REPLIES_PER_RUN` | `8` | Maximum automatic replies per post run. |
 
 ## LinkedIn access requirements
 
@@ -69,9 +76,11 @@ LinkedIn's current Posts API uses `POST https://api.linkedin.com/rest/posts` for
 - Personal profile posts: `w_member_social`.
 - Organization/page posts: `w_organization_social`, and the LinkedIn member must have an eligible admin/content role for that page.
 
-For the automatic first comment, LinkedIn's comments API uses `POST https://api.linkedin.com/rest/socialActions/{postUrn}/comments`. Depending on your LinkedIn app access, the token may also need social feed comment permission such as `w_member_social_feed` for personal comments or `w_organization_social_feed` for organization comments.
+For the automatic first comment and comment replies, LinkedIn's comments API uses `POST https://api.linkedin.com/rest/socialActions/{postUrn}/comments`. Depending on your LinkedIn app access, the token may need social feed comment permission such as `w_member_social_feed` for personal comments or `w_organization_social_feed` for organization comments.
 
-If the comment call fails, the script logs a warning but does not retry the whole job. This avoids accidentally duplicating a post after it has already been published.
+For comment monitoring, the workflow also has to read comments from the post. LinkedIn may require read/social feed permission for that app. If LinkedIn does not grant comment-read access, the workflow will still publish the post, then stop the reply monitor with a warning in the action log.
+
+If a reply call fails, the script logs a warning and skips that comment. It does not retry the whole job, which avoids accidentally duplicating a published post.
 
 ## Manual test
 
