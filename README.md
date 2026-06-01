@@ -2,6 +2,21 @@
 
 This repository runs a GitHub Actions workflow every two hours. The workflow gathers fresh biotech news, uses OpenAI to create a humanized biotech LinkedIn post, generates a matching biotech visual, publishes the post with the image through LinkedIn, and stays active to reply to new comments until the next scheduled run is close to starting.
 
+## Reliability promise
+
+No automation can honestly guarantee zero errors until 2035. LinkedIn, OpenAI, GitHub Actions, RSS feeds, pricing, auth, and API versions can change.
+
+This workflow is hardened to fail gracefully:
+
+- Retries temporary API/network failures.
+- Skips broken RSS feeds instead of stopping the run.
+- Falls back to timeless biotech analysis if no fresh news is available.
+- Falls back to text-only posting if image generation or image upload fails.
+- Can require image posts by setting `REQUIRE_IMAGE_POST=true`.
+- Keeps comment monitoring failures from duplicating posts.
+- Writes a failure report to `run-reports/failure.json` when a run still fails.
+- Uploads the failure report as a GitHub Actions artifact.
+
 ## Content strategy
 
 The automation is biotech-only and humanized-only. It should not post general AI, general tech, finance, lifestyle, or generic news unless the angle is directly tied to biotech.
@@ -24,31 +39,22 @@ Each post is optimized for credible reach toward recruiters, founders, researche
 - Short, skimmable paragraphs.
 - 3 to 4 practical bullets about biotech data, AI, bioinformatics, lab automation, drug discovery, genomics, diagnostics, or clinical operations.
 - A specific analytical question that invites comments.
-- A generated biotech image on every post.
+- A generated biotech image on every post when image generation/upload succeeds.
 - Near-continuous comment monitoring between scheduled runs.
 
 ## Image strategy
 
-Every published post includes an AI-generated biotech visual. The image prompt is constrained to biotech concepts such as genomics, AI drug discovery, diagnostics, lab automation, molecular data, clinical data systems, and computational biology.
+Every normal published post includes an AI-generated biotech visual. If image generation or upload fails, the default behavior is to publish the humanized biotech post as text-only so the automation keeps moving. Set `REQUIRE_IMAGE_POST=true` if you would rather fail the run than publish without an image.
 
-The image style is professional and editorial:
-
-- Dark background.
-- Emerald/cyan scientific accents.
-- Abstract lab/data visuals.
-- No logos.
-- No fake brands.
-- No patient imagery.
-- No unsupported medical claims.
-- Minimal or no text inside the image.
+The image prompt is constrained to biotech concepts such as genomics, AI drug discovery, diagnostics, lab automation, molecular data, clinical data systems, and computational biology.
 
 ## What it does
 
 - Runs every 2 hours with GitHub Actions.
 - Pulls recent biotech news from RSS/news feeds.
 - Generates one humanized biotech-only LinkedIn post.
-- Generates one matching biotech image.
-- Uploads the image through LinkedIn's Images API.
+- Generates one matching biotech image when possible.
+- Uploads the image through LinkedIn's Images API when possible.
 - Publishes the post through LinkedIn's Posts API.
 - Keeps the workflow active for up to 115 minutes after posting.
 - Checks for new comments every 5 minutes during that window.
@@ -85,6 +91,9 @@ Add these in **Settings -> Secrets and variables -> Actions -> Variables** if yo
 | `LINKEDIN_VERSION` | `202605` | LinkedIn API version header. |
 | `NEWS_FEEDS` | built-in biotech feeds | Comma-separated RSS feed URLs. |
 | `NEWS_ITEMS_LIMIT` | `8` | Number of news items passed into the post prompt. |
+| `REQUEST_RETRY_ATTEMPTS` | `3` | Number of retry attempts for temporary API/network failures. |
+| `REQUEST_RETRY_DELAY_MS` | `2000` | Base retry delay in milliseconds. |
+| `REQUIRE_IMAGE_POST` | `false` | Set to `true` to fail instead of posting text-only when image generation/upload fails. |
 | `DRY_RUN` | `false` | Set to `true` to generate posts/images without publishing. |
 | `ENABLE_COMMENT_REPLIES` | `true` | Set to `false` to publish without monitoring and replying. |
 | `MONITOR_COMMENTS_MINUTES` | `115` | How long the workflow stays active after posting. |
