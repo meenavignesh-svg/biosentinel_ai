@@ -1,21 +1,21 @@
-name: Post biotech updates to LinkedIn
+name: Generate Biostars draft posts
 
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "30 3 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: biotech-linkedin-posting
+  group: biostars-draft-generation
   cancel-in-progress: false
 
 jobs:
-  post:
+  draft:
     runs-on: ubuntu-latest
-    timeout-minutes: 125
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
@@ -26,32 +26,28 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Generate image-backed biotech post, publish, and monitor replies
+      - name: Generate Biostars-ready draft
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5' }}
-          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL || 'gpt-image-1' }}
-          OPENAI_IMAGE_SIZE: ${{ vars.OPENAI_IMAGE_SIZE || '1536x1024' }}
-          OPENAI_IMAGE_QUALITY: ${{ vars.OPENAI_IMAGE_QUALITY || 'medium' }}
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          LINKEDIN_AUTHOR_URN: ${{ secrets.LINKEDIN_AUTHOR_URN }}
-          LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION || '202605' }}
-          NEWS_FEEDS: ${{ vars.NEWS_FEEDS || '' }}
-          NEWS_ITEMS_LIMIT: ${{ vars.NEWS_ITEMS_LIMIT || '8' }}
+          SOURCE_REPOSITORIES: ${{ vars.SOURCE_REPOSITORIES || 'meenavignesh-svg/daily_biotech_based_linkedin_post' }}
           REQUEST_RETRY_ATTEMPTS: ${{ vars.REQUEST_RETRY_ATTEMPTS || '3' }}
           REQUEST_RETRY_DELAY_MS: ${{ vars.REQUEST_RETRY_DELAY_MS || '2000' }}
-          REQUIRE_IMAGE_POST: ${{ vars.REQUIRE_IMAGE_POST || 'false' }}
-          DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
-          ENABLE_COMMENT_REPLIES: ${{ vars.ENABLE_COMMENT_REPLIES || 'true' }}
-          MONITOR_COMMENTS_MINUTES: ${{ vars.MONITOR_COMMENTS_MINUTES || '115' }}
-          COMMENT_CHECK_INTERVAL_SECONDS: ${{ vars.COMMENT_CHECK_INTERVAL_SECONDS || '300' }}
-          MAX_COMMENT_REPLIES_PER_RUN: ${{ vars.MAX_COMMENT_REPLIES_PER_RUN || '20' }}
-        run: node scripts/post-biotech-linkedin.js
+          MAX_OUTPUT_TOKENS: ${{ vars.MAX_OUTPUT_TOKENS || '1600' }}
+        run: node scripts/generate-biostars-draft.js
+
+      - name: Upload Biostars draft
+        uses: actions/upload-artifact@v4
+        with:
+          name: biostars-draft
+          path: biostars-drafts/
+          if-no-files-found: error
 
       - name: Upload failure report
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: biotech-linkedin-failure-report
+          name: biostars-draft-failure-report
           path: run-reports/
           if-no-files-found: ignore
