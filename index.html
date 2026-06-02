@@ -3,155 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BioConsensus Lab</title>
+    <title>BioSentinel AI</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <canvas id="signalCanvas" aria-hidden="true"></canvas>
-
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Bioinformatics analysis workbench</p>
-        <h1>BioConsensus Lab</h1>
-      </div>
-      <div class="top-actions">
-        <div class="key-state" id="keyState">AI optional</div>
-        <button class="ghost-button" id="apiButton" type="button">Connect API</button>
-      </div>
-    </header>
-
-    <main class="layout">
-      <section class="control-panel" aria-label="Sequence controls">
-        <div class="panel-head">
-          <h2>Sequence Input</h2>
-          <button class="ghost-button" id="exampleButton" type="button">Example</button>
+    <main class="landing">
+      <section class="landing-panel">
+        <p class="eyebrow">Full-stack bioinformatics SaaS MVP</p>
+        <h1>BioSentinel AI</h1>
+        <p>
+          The AI-enabled app now runs as a secure full-stack system. The OpenAI key belongs on the
+          FastAPI backend, never in browser JavaScript.
+        </p>
+        <div class="command-card">
+          <span>Run locally</span>
+          <code>cp .env.example .env</code>
+          <code>docker compose up --build</code>
+          <span>Open http://localhost:5173</span>
         </div>
-
-        <label class="field-label" for="sequenceInput">Paste DNA, RNA, protein, or FASTA</label>
-        <textarea id="sequenceInput" rows="10" spellcheck="false" placeholder=">sample_dna&#10;ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"></textarea>
-
-        <div class="settings-grid">
-          <label>
-            Sequence type
-            <select id="sequenceType">
-              <option value="auto">Auto detect</option>
-              <option value="dna">DNA</option>
-              <option value="rna">RNA</option>
-              <option value="protein">Protein</option>
-            </select>
-          </label>
-          <label>
-            Genetic code
-            <select id="geneticCode">
-              <option value="standard">Standard</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="actions-row">
-          <button class="primary-button" id="analyzeButton" type="button">Analyze sequence</button>
-          <button class="ghost-button" id="clearButton" type="button">Clear</button>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="panel-head compact-head">
-          <h2>Primer QC</h2>
-        </div>
-        <div class="settings-grid">
-          <label>
-            Forward primer
-            <input id="forwardPrimer" type="text" spellcheck="false" placeholder="ATGGCCATTGTA" />
-          </label>
-          <label>
-            Reverse primer
-            <input id="reversePrimer" type="text" spellcheck="false" placeholder="CTATCGGGCACC" />
-          </label>
-        </div>
-        <button class="ghost-button full-button" id="primerButton" type="button">Check primers</button>
-
-        <div class="divider"></div>
-
-        <div class="panel-head compact-head">
-          <h2>AI Consensus Review</h2>
-        </div>
-        <label class="field-label" for="researchQuestion">Question for the agents</label>
-        <textarea id="researchQuestion" rows="4" placeholder="Example: Does this ORF look suitable for a beginner cloning exercise? What should I verify before using it?"></textarea>
-        <div class="settings-grid">
-          <label>
-            Model
-            <select id="modelInput">
-              <option value="gpt-5">gpt-5</option>
-              <option value="gpt-5-mini">gpt-5-mini</option>
-              <option value="gpt-4.1">gpt-4.1</option>
-              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-            </select>
-          </label>
-          <label>
-            Depth
-            <select id="depthInput">
-              <option value="standard">Standard</option>
-              <option value="deep">Deep</option>
-              <option value="fast">Fast</option>
-            </select>
-          </label>
-        </div>
-        <div class="agent-list" aria-label="Active bioinformatics agents">
-          <label><input type="checkbox" data-agent="sequence" checked /> Sequence</label>
-          <label><input type="checkbox" data-agent="annotation" checked /> Annotation</label>
-          <label><input type="checkbox" data-agent="wetlab" checked /> Wet Lab</label>
-          <label><input type="checkbox" data-agent="quality" checked /> Quality</label>
-          <label><input type="checkbox" data-agent="safety" checked /> Safety</label>
-        </div>
-        <button class="primary-button full-button" id="runButton" type="button" disabled>Run AI consensus</button>
-        <p class="privacy-note">Core sequence analysis runs locally. The API key is needed only for optional AI interpretation.</p>
-      </section>
-
-      <section class="results-panel" aria-label="Bioinformatics results">
-        <div class="panel-head">
-          <h2>Analysis Results</h2>
-          <button class="ghost-button" id="copyButton" type="button">Copy report</button>
-        </div>
-
-        <div class="status-track" id="statusTrack">
-          <span class="status-dot"></span>
-          <span id="statusText">Paste a sequence to begin.</span>
-        </div>
-
-        <div class="metric-grid" id="metricGrid"></div>
-
-        <article class="consensus-output" id="analysisOutput">
-          <p>Run an analysis to see cleaned sequence statistics, composition, reverse complement, transcription/translation, ORFs, and primer QC.</p>
-        </article>
-
-        <div class="tabs" role="tablist" aria-label="Result tabs">
-          <button class="tab-button active" data-tab="orfs" type="button">ORFs</button>
-          <button class="tab-button" data-tab="composition" type="button">Composition</button>
-          <button class="tab-button" data-tab="ai" type="button">AI Consensus</button>
-        </div>
-
-        <div class="tab-panel" id="orfsPanel"></div>
-        <div class="tab-panel hidden" id="compositionPanel"></div>
-        <div class="tab-panel hidden" id="aiPanel">
-          <p class="muted-copy">Connect an API key and run the AI consensus review after local analysis.</p>
-          <div class="agent-output-grid" id="agentOutputs" aria-live="polite"></div>
-        </div>
+        <p class="fine-print">
+          Research and education use only. Not for clinical use. No diagnosis, pathogen detection,
+          organism identity, or regulatory claims are made.
+        </p>
       </section>
     </main>
-
-    <dialog class="api-dialog" id="apiDialog">
-      <form method="dialog" class="dialog-body">
-        <h2>Connect OpenAI API</h2>
-        <p>Enter your API key for optional AI consensus review. Local sequence analysis does not need it.</p>
-        <label class="field-label" for="apiKeyInput">API key</label>
-        <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
-        <div class="dialog-actions">
-          <button class="ghost-button" value="cancel" type="submit">Cancel</button>
-          <button class="primary-button" id="saveKeyButton" value="default" type="submit">Save key</button>
-        </div>
-      </form>
-    </dialog>
-
-    <script src="app.js"></script>
   </body>
 </html>

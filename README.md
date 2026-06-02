@@ -1,71 +1,90 @@
-# BioConsensus Lab
+# BioSentinel AI
 
-A fully client-side bioinformatics web app deployed with GitHub Pages. It performs practical sequence analysis in the browser and can optionally ask multiple AI reviewers to generate a consensus interpretation.
+BioSentinel AI is a full-stack bioinformatics SaaS MVP for research-use sequence analysis. It includes a React frontend, FastAPI backend, authentication, database storage, file uploads, report generation, Redis/Celery worker scaffolding, and backend-owned AI interpretation.
 
-## Live Site
+The OpenAI API key is never entered into the browser. AI works through the backend endpoint `/api/ai/interpret`.
 
-After GitHub Pages finishes deploying, the app will be available at:
+## What Works
 
-```text
-https://meenavignesh-svg.github.io/biosentinel_ai/
+- User registration and login with JWT tokens.
+- Password hashing with bcrypt.
+- PostgreSQL database models for users, uploads, analysis jobs, sequence results, and reports.
+- FASTA/plain sequence validation.
+- DNA/RNA/protein detection.
+- GC content, composition, reverse complement, transcription, translation, ORF scanning, motif search, restriction-site scanning, and primer QC.
+- FASTA/text upload with file-size limits.
+- Stored analysis jobs and JSON/HTML report generation.
+- AI interpretation that only receives calculated backend results.
+- Docker Compose setup for frontend, backend, PostgreSQL, Redis, and worker.
+- Backend tests for core analysis and API behavior.
+
+## Safety Boundaries
+
+This app is for research and education use only.
+
+It does not claim:
+
+- Clinical diagnosis
+- FDA/CE approval
+- Medical accuracy
+- Pathogen detection
+- Organism identification
+- Real BLAST integration
+- A novel AI model
+
+AI output must include uncertainty and `not for clinical use`.
+
+## Run Locally
+
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-## What It Does Locally
+Open:
 
-The main analysis tools run directly in the browser and do not require an API key.
+- Frontend: `http://localhost:5173`
+- Backend API docs: `http://localhost:8000/docs`
+- Health check: `http://localhost:8000/health`
 
-- Accepts FASTA or plain DNA, RNA, and protein sequences.
-- Auto-detects sequence type, with manual override controls.
-- Calculates length, nucleotide or amino-acid composition, and GC content.
-- Generates reverse complement sequences for DNA and RNA.
-- Transcribes DNA to RNA.
-- Translates coding sequences with the standard codon table.
-- Scans open reading frames across forward and reverse frames.
-- Estimates protein molecular weight.
-- Checks primers for length, GC percentage, rough melting temperature, and simple homopolymer risk.
-- Creates a copyable analysis report.
-
-## Optional AI Consensus Review
-
-The app asks for an OpenAI API key before running any AI review. The key stays in browser session storage for the current browser session and is not saved in this repository.
-
-Bioinformatics-focused reviewers include:
-
-- Sequence Analyst
-- Annotation Reviewer
-- Wet Lab Planner
-- Data QC
-- Safety Reviewer
-
-The AI review is designed to explain the local analysis, flag quality concerns, and suggest practical next steps. Local analysis still works without AI.
-
-## Privacy
-
-This is a static GitHub Pages app. There is no backend server in this repository.
-
-Your API key is stored only in `sessionStorage` for the current browser session. When you run the AI review, requests are sent directly from your browser to the OpenAI API.
-
-Do not use this on shared or untrusted computers.
-
-## Deployment
-
-The app deploys through GitHub Actions using GitHub Pages.
-
-The deployment workflow is:
+To enable AI, put your OpenAI key in `.env`:
 
 ```text
-.github/workflows/deploy-pages.yml
+OPENAI_API_KEY=your_key_here
 ```
 
-## Files
+## Project Structure
 
-| File | Purpose |
-| --- | --- |
-| `index.html` | Bioinformatics workbench interface. |
-| `styles.css` | Responsive app styling and visual system. |
-| `app.js` | Sequence analysis, primer checks, optional AI consensus, and visual motion. |
-| `.github/workflows/deploy-pages.yml` | GitHub Pages deployment workflow. |
+```text
+frontend/              React + Vite + TypeScript app
+backend/               FastAPI app
+backend/app/api/       API routes are currently mounted from app/main.py
+backend/app/services/  Bioinformatics and AI services
+backend/app/models/    SQLAlchemy database models
+backend/app/jobs/      Celery worker entrypoint
+backend/tests/         pytest tests
+docs/                  API, architecture, limitations, deployment notes
+docker-compose.yml     Full local stack
+```
 
-## Notes
+## Development Checks
 
-Because GitHub Pages is static hosting, it cannot safely store server-side secrets. The app asks for the API key at runtime instead of using a repository secret.
+Backend:
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+## Deployment Notes
+
+GitHub Pages can only show the static root landing page. The working AI app needs the backend, database, and Redis services. Deploy the backend to a server platform, set `OPENAI_API_KEY` on that backend, then build the frontend with `VITE_API_URL` pointing at the backend URL.
