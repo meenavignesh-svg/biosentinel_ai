@@ -1,22 +1,33 @@
 # BioSentinel AI
 
-BioSentinel AI is a full-stack bioinformatics SaaS MVP for research-use sequence analysis. It includes a React frontend, FastAPI backend, authentication, database storage, file uploads, report generation, Redis/Celery worker scaffolding, and backend-owned AI interpretation.
+BioSentinel AI is a zero-key desktop bioinformatics workbench for research-use sequence analysis. The public app runs fully in the browser: no login, no OpenAI key, no external AI API, and no backend required for the main experience.
 
-The OpenAI API key is never entered into the browser. AI works through the backend endpoint `/api/ai/interpret`.
+Live app:
 
-## What Works
+```text
+https://meenavignesh-svg.github.io/biosentinel_ai/
+```
 
-- User registration and login with JWT tokens.
-- Password hashing with bcrypt.
-- PostgreSQL database models for users, uploads, analysis jobs, sequence results, and reports.
-- FASTA/plain sequence validation.
+## What Works In The Live App
+
+- FASTA/plain sequence input.
 - DNA/RNA/protein detection.
-- GC content, composition, reverse complement, transcription, translation, ORF scanning, motif search, restriction-site scanning, and primer QC.
-- FASTA/text upload with file-size limits.
-- Stored analysis jobs and JSON/HTML report generation.
-- AI interpretation that only receives calculated backend results.
-- Docker Compose setup for frontend, backend, PostgreSQL, Redis, and worker.
-- Backend tests for core analysis and API behavior.
+- GC content, composition, reverse complement, transcription, translation, ORF scanning, restriction-site screening, and primer QC.
+- Rules-based bioinformatics interpretation with explicit uncertainty and limitations.
+- JSON report download and clipboard export.
+- Desktop-first interface with tabbed results and high-density panels.
+
+## No API Required
+
+The live app does not require:
+
+- OpenAI API key
+- Vercel secrets
+- Backend server
+- User account
+- Database
+
+The interpretation panel is intentionally rules-based. It does not pretend to be a trained biological model.
 
 ## Safety Boundaries
 
@@ -32,44 +43,30 @@ It does not claim:
 - Real BLAST integration
 - A novel AI model
 
-AI output must include uncertainty and `not for clinical use`.
+All interpretation must include uncertainty and `not for clinical use`.
 
-## Run Locally
+## Local Development
+
+Frontend:
 
 ```bash
-cp .env.example .env
-docker compose up --build
+cd frontend
+npm install
+npm run dev
 ```
 
-Open:
+Build:
 
-- Frontend: `http://localhost:5173`
-- Backend API docs: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
-
-To enable AI, put your OpenAI key in `.env`:
-
-```text
-OPENAI_API_KEY=your_key_here
+```bash
+cd frontend
+npm run build
 ```
 
-## Project Structure
+## Optional Full-Stack Backend
 
-```text
-frontend/              React + Vite + TypeScript app
-backend/               FastAPI app
-backend/app/api/       API routes are currently mounted from app/main.py
-backend/app/services/  Bioinformatics and AI services
-backend/app/models/    SQLAlchemy database models
-backend/app/jobs/      Celery worker entrypoint
-backend/tests/         pytest tests
-docs/                  API, architecture, limitations, deployment notes
-docker-compose.yml     Full local stack
-```
+The repository still includes the earlier FastAPI backend for future authenticated SaaS development, but the public GitHub Pages app does not depend on it.
 
-## Development Checks
-
-Backend:
+Backend checks:
 
 ```bash
 cd backend
@@ -77,14 +74,6 @@ pip install -r requirements.txt
 pytest
 ```
 
-Frontend:
+## Deployment
 
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-## Deployment Notes
-
-GitHub Pages can only show the static root landing page. The working AI app needs the backend, database, and Redis services. Deploy the backend to a server platform, set `OPENAI_API_KEY` on that backend, then build the frontend with `VITE_API_URL` pointing at the backend URL.
+GitHub Actions builds `frontend/` and deploys `frontend/dist` to GitHub Pages.

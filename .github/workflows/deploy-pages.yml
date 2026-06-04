@@ -1,4 +1,4 @@
-name: Deploy BioConsensus Lab to GitHub Pages
+name: Deploy BioSentinel AI to GitHub Pages
 
 on:
   push:
@@ -25,13 +25,28 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build desktop workbench
+        working-directory: frontend
+        run: npm run build
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload static site
+      - name: Upload desktop workbench
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: frontend/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
